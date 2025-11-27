@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Kanban - Agendamento de Itens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--secondary);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 24px;
+            color: var(--primary);
+        }
+        
+        .user-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .view-toggle {
+            display: flex;
+            background-color: var(--dark);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .view-toggle button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .view-toggle button.active {
+            background-color: var(--primary);
+        }
+        
+        .alert-button {
+            background-color: var(--warning);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        .kanban-column {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 15px;
+            min-height: 500px;
+        }
+        
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .column-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .item-count {
+            background-color: var(--light);
+            color: var(--dark);
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .kanban-items {
+            min-height: 400px;
+        }
+        
+        .kanban-item {
+            background-color: white;
+            border-left: 4px solid var(--primary);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        
+        .kanban-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        }
+        
+        .kanban-item.delayed {
+            border-left-color: var(--danger);
+        }
+        
+        .kanban-item.urgent {
+            border-left-color: var(--warning);
+        }
+        
+        .kanban-item.normal {
+            border-left-color: var(--success);
+        }
+        
+        .kanban-item.completed {
+            border-left-color: var(--primary);
+        }
+        
+        .kanban-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .item-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .item-details {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .item-time {
+            font-size: 11px;
+            color: #999;
+        }
+        
+        .item-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .status-delayed {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .status-urgent {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .status-normal {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .status-completed {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .item-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .kanban-item:hover .item-actions {
+            opacity: 1;
+        }
+        
+        .item-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delete-btn {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .edit-btn {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .calendar-container, .alert-container, .map-container, .stats-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 15px;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .calendar-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .calendar-day {
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 5px 0;
+        }
+        
+        .calendar-date {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .calendar-date:hover {
+            background-color: var(--light);
+        }
+        
+        .calendar-date.has-items {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .calendar-date.today {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .calendar-date.selected {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .alert-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .alert-item {
+            padding: 10px;
+            border-left: 3px solid var(--danger);
+            margin-bottom: 10px;
+            background-color: #fff5f5;
+            border-radius: 4px;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .alert-details {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .map-placeholder {
+            height: 150px;
+            background-color: var(--light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dark);
+            font-weight: 600;
+            flex-direction: column;
+        }
+        
+        .map-placeholder i {
+            font-size: 40px;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-card {
+            background-color: var(--light);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--dark);
+        }
+        
+        .stat-card.delayed .stat-value {
+            color: var(--danger);
+        }
+        
+        .stat-card.urgent .stat-value {
+            color: var(--warning);
+        }
+        
+        .stat-card.normal .stat-value {
+            color: var(--success);
+        }
+        
+        .stat-card.completed .stat-value {
+            color: var(--primary);
+        }
+        
+        .stat-card.total .stat-value {
+            color: var(--secondary);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: var(--light);
+            color: var(--dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .status-light {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-green {
+            background-color: var(--success);
+        }
+        
+        .status-red {
+            background-color: var(--danger);
+        }
+        
+        .logistics-view {
+            display: none;
+        }
+        
+        .logistics-view.active {
+            display: block;
+        }
+        
+        .operator-view.active {
+            display: block;
+        }
+        
+        .login-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-form {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .add-item-btn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s;
+        }
+        
+        .drop-zone.active {
+            border-color: var(--primary);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .calendar-nav button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--primary);
+        }
+        
+        .leader-dashboard {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .dashboard-title {
+            font-weight: 600;
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--secondary);
+        }
+        
+        .dashboard-subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Modal de Login para Líderes -->
+    <div class="login-container" id="loginModal">
+        <div class="login-form">
+            <h2 style="text-align: center; margin-bottom: 20px;">Acesso de Líder</h2>
+            <div class="form-group">
+                <label for="username">Nome de usuário</label>
+                <input type="text" id="username" placeholder="Digite seu nome de usuário">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Digite sua senha">
+            </div>
+            <button class="login-button" id="loginButton">Entrar</button>
+            <p style="text-align: center; margin-top: 15px; font-size: 14px; color: #666;">
+                Dica: Use "admin" / "admin123" para teste
+            </p>
+        </div>
+    </div>
+    
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-tasks"></i>
+                    <h1>Sistema Kanban</h1>
+                </div>
+                <div class="user-controls">
+                    <div class="view-toggle">
+                        <button id="logisticsViewBtn">Logística</button>
+                        <button id="leaderViewBtn">Líder</button>
+                    </div>
+                    <button class="alert-button" id="showAlerts">
+                        <i class="fas fa-bell"></i>
+                        Alertas
+                    </button>
+                    <button class="alert-button" id="logoutButton" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Visualização do Operador -->
+        <div class="operator-view active">
+            <div class="main-content">
+                <div class="kanban-board">
+                    <div class="kanban-column" id="todo-column">
+                        <div class="column-header">
+                            <div class="column-title">A Fazer</div>
+                            <div class="item-count">3</div>
+                        </div>
+                        <div class="kanban-items drop-zone" id="todo-items">
+                            <!-- Itens serão carregados via JavaScript -->
+                        </div>
+                        <button class="add-item-btn" id="addTodoItem">
+                            <i class="fas fa-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                    
+                    <div class="kanban-column" id="progress-column">
+                        <div class="column-header">
+                            <div class="column-title">Em Andamento</div>
+                            <div class="item-count">2</div>
+                        </div>
+                        <div class="kanban-items drop-zone" id="progress-items">
+                            <!-- Itens serão carregados via JavaScript -->
+                        </div>
+                        <button class="add-item-btn" id="addProgressItem">
+                            <i class="fas fa-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                    
+                    <div class="kanban-column" id="done-column">
+                        <div class="column-header">
+                            <div class="column-title">Concluído</div>
+                            <div class="item-count">4</div>
+                        </div>
+                        <div class="kanban-items drop-zone" id="done-items">
+                            <!-- Itens serão carregados via JavaScript -->
+                        </div>
+                        <button class="add-item-btn" id="addDoneItem">
+                            <i class="fas fa-plus"></i> Adicionar Item
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="sidebar">
+                    <div class="stats-container">
+                        <div class="section-title">Estatísticas</div>
+                        <div class="stats-grid">
+                            <div class="stat-card total">
+                                <div class="stat-value" id="totalItems">9</div>
+                                <div class="stat-label">Total de Itens</div>
+                            </div>
+                            <div class="stat-card completed">
+                                <div class="stat-value" id="completedItems">4</div>
+                                <div class="stat-label">Itens Concluídos</div>
+                            </div>
+                            <div class="stat-card delayed">
+                                <div class="stat-value" id="delayedItems">2</div>
+                                <div class="stat-label">Itens Atrasados</div>
+                            </div>
+                            <div class="stat-card urgent">
+                                <div class="stat-value" id="urgentItems">1</div>
+                                <div class="stat-label">Itens Urgentes</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container">
+                        <div class="section-title">Mapa de Status</div>
+                        <div class="map-placeholder">
+                            <div>
+                                <i class="fas fa-map-marked-alt"></i>
+                                <div>Mapa com luzes verde e vermelho</div>
+                                <div style="margin-top: 10px; font-size: 14px;">
+                                    <div><span class="status-light status-green"></span> Setor A: Normal</div>
+                                    <div><span class="status-light status-red"></span> Setor C: Atenção</div>
+                                    <div><span class="status-light status-green"></span> Setor B: Normal</div>
+                                    <div><span class="status-light status-green"></span> Setor D: Normal</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert-container">
+                        <div class="alert-header">
+                            <div class="section-title">Alertas</div>
+                            <button class="btn btn-primary" id="addAlertBtn">
+                                <i class="fas fa-plus"></i> Novo Alerta
+                            </button>
+                        </div>
+                        <div class="alert-list" id="alerts-list">
+                            <!-- Alertas serão carregados via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Visualização de Logística -->
+        <div class="logistics-view">
+            <div class="main-content">
+                <div class="sidebar" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div class="stats-container">
+                            <div class="section-title">Estatísticas</div>
+                            <div class="stats-grid">
+                                <div class="stat-card total">
+                                    <div class="stat-value" id="logisticsTotalItems">9</div>
+                                    <div class="stat-label">Total de Itens</div>
+                                </div>
+                                <div class="stat-card completed">
+                                    <div class="stat-value" id="logisticsCompletedItems">4</div>
+                                    <div class="stat-label">Itens Concluídos</div>
+                                </div>
+                                <div class="stat-card delayed">
+                                    <div class="stat-value" id="logisticsDelayedItems">2</div>
+                                    <div class="stat-label">Itens Atrasados</div>
+                                </div>
+                                <div class="stat-card urgent">
+                                    <div class="stat-value" id="logisticsUrgentItems">1</div>
+                                    <div class="stat-label">Itens Urgentes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="calendar-container">
+                            <div class="section-title">Calendário</div>
+                            <div class="calendar-nav">
+                                <button id="logistics-prevMonth"><i class="fas fa-chevron-left"></i></button>
+                                <span id="logistics-currentMonth">Junho 2023</span>
+                                <button id="logistics-nextMonth"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="calendar" id="logistics-calendar">
+                                <!-- O calendário será gerado via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Visualização do Líder (após login) -->
+        <div class="logistics-view" id="leaderView" style="display: none;">
+            <div class="main-content">
+                <div style="grid-column: 1 / -1;">
+                    <!-- Painel do Líder -->
+                    <div class="leader-dashboard">
+                        <div class="dashboard-title">Painel do Líder</div>
+                        <div class="dashboard-subtitle">Visão completa com calendário funcional, sensores ativos e relatórios detalhados.</div>
+                        
+                        <!-- SEGUNDA LINHA: Calendário e Sensores -->
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                            <!-- COLUNA ESQUERDA: Calendário -->
+                            <div>
+                                <!-- CALENDÁRIO -->
+                                <div class="kanban-column">
+                                    <div class="column-header">
+                                        <div class="column-title">Calendário de Agendamentos</div>
+                                    </div>
+                                    <div class="calendar-container">
+                                        <div class="calendar-nav">
+                                            <button id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+                                            <span id="currentMonth">Junho 2023</span>
+                                            <button id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+                                        </div>
+                                        <div class="calendar" id="leader-calendar">
+                                            <!-- O calendário será gerado via JavaScript -->
+                                        </div>
+                                        <div style="margin-top: 15px;">
+                                            <button class="btn btn-primary" id="addScheduleBtn">
+                                                <i class="fas fa-plus"></i> Adicionar Agendamento
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- COLUNA DIREITA: Sensores Ativos -->
+                            <div>
+                                <!-- SENSORES ATIVOS -->
+                                <div class="kanban-column">
+                                    <div class="column-header">
+                                        <div class="column-title">Sensores Ativos</div>
+                                    </div>
+                                    <div style="padding: 10px;">
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <span class="status-light status-green"></span>
+                                            <span>Sensor Setor A: Ativo</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <span class="status-light status-green"></span>
+                                            <span>Sensor Setor B: Ativo</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <span class="status-light status-red"></span>
+                                            <span>Sensor Setor C: Inativo</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <span class="status-light status-green"></span>
+                                            <span>Sensor Setor D: Ativo</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                                            <span class="status-light status-green"></span>
+                                            <span>Sensor Setor E: Ativo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para detalhes do item -->
+    <div class="modal" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Detalhes do Item</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <strong id="modalItemTitle">Item #007</strong>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <div style="font-size: 14px; color: #666;">Status:</div>
+                        <div style="font-weight: 600; color: var(--danger);" id="modalItemStatus">Atrasado</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #666;">Local:</div>
+                        <div style="font-weight: 600;" id="modalItemLocation">Setor A</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #666;">Responsável:</div>
+                        <div style="font-weight: 600;" id="modalItemResponsible">João Silva</div>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #666; margin-bottom: 5px;">Descrição:</div>
+                    <div id="modalItemDescription">Material necessário para linha de produção. Urgente devido a parada programada.</div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 14px; color: #666;">Criado em:</div>
+                    <div style="font-weight: 600;" id="modalItemCreatedAt">09/06/2023 14:30</div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 14px; color: #666;">Tempo decorrido:</div>
+                    <div style="font-weight: 600;" id="modalItemElapsedTime">1 hora e 25 minutos</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-modal">Fechar</button>
+                <button class="btn btn-success" id="markAsResolved">Marcar como Resolvido</button>
+                <button class="btn btn-danger" id="deleteItemBtn">Excluir Item</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para adicionar item -->
+    <div class="modal" id="addItemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Novo Item</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="itemTitle">Título do Item</label>
+                    <input type="text" id="itemTitle" placeholder="Digite o título do item">
+                </div>
+                <div class="form-group">
+                    <label for="itemLocation">Local</label>
+                    <select id="itemLocation">
+                        <option value="Setor A">Setor A</option>
+                        <option value="Setor B">Setor B</option>
+                        <option value="Setor C">Setor C</option>
+                        <option value="Setor D">Setor D</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="itemDescription">Descrição</label>
+                    <textarea id="itemDescription" rows="3" placeholder="Digite uma descrição para o item" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+                <button class="btn btn-success" id="saveNewItem">Salvar Item</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para informar responsável -->
+    <div class="modal" id="responsibleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Informe o Responsável</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Você está movendo um item para "Em Andamento". Por favor, informe o responsável:</p>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="responsibleName">Nome do Responsável</label>
+                    <input type="text" id="responsibleName" placeholder="Digite o nome do responsável">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+                <button class="btn btn-primary" id="confirmMove">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para adicionar agendamento -->
+    <div class="modal" id="addScheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Agendamento</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="scheduleTitle">Título do Agendamento</label>
+                    <input type="text" id="scheduleTitle" placeholder="Digite o título do agendamento">
+                </div>
+                <div class="form-group">
+                    <label for="scheduleDate">Data</label>
+                    <input type="date" id="scheduleDate">
+                </div>
+                <div class="form-group">
+                    <label for="scheduleDescription">Descrição</label>
+                    <textarea id="scheduleDescription" rows="3" placeholder="Digite uma descrição para o agendamento" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+                <button class="btn btn-success" id="saveSchedule">Salvar Agendamento</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para adicionar alerta -->
+    <div class="modal" id="addAlertModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Alerta</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="alertTitle">Título do Alerta</label>
+                    <input type="text" id="alertTitle" placeholder="Digite o título do alerta">
+                </div>
+                <div class="form-group">
+                    <label for="alertPriority">Prioridade</label>
+                    <select id="alertPriority">
+                        <option value="baixa">Baixa</option>
+                        <option value="media">Média</option>
+                        <option value="alta">Alta</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="alertDescription">Descrição</label>
+                    <textarea id="alertDescription" rows="3" placeholder="Digite uma descrição para o alerta" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary close-modal">Cancelar</button>
+                <button class="btn btn-success" id="saveAlert">Salvar Alerta</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Dados iniciais
+        let currentUser = null;
+        let currentDate = new Date();
+        let logisticsCurrentDate = new Date();
+        
+        // Criar alguns itens com timestamps diferentes para demonstrar o sistema de status
+        let kanbanItems = [
+            { 
+                id: 1, 
+                title: "Item #001", 
+                location: "Setor A", 
+                status: "todo", 
+                description: "Material para linha de produção A", 
+                createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 horas atrás
+            },
+            { 
+                id: 2, 
+                title: "Item #002", 
+                location: "Setor B", 
+                status: "done", 
+                completed: "2023-06-05", 
+                description: "Peças de reposição", 
+                createdAt: new Date(Date.now() - 50 * 60 * 1000).toISOString() // 50 minutos atrás
+            },
+            { 
+                id: 3, 
+                title: "Item #003", 
+                location: "Setor D", 
+                status: "progress", 
+                description: "Ferramentas especiais", 
+                responsible: "Maria Santos", 
+                createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString() // 30 minutos atrás
+            },
+            { 
+                id: 4, 
+                title: "Item #004", 
+                location: "Setor C", 
+                status: "done", 
+                completed: "2023-06-07", 
+                description: "Material de escritório", 
+                createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString() // 1h30 atrás
+            },
+            { 
+                id: 5, 
+                title: "Item #005", 
+                location: "Setor C", 
+                status: "todo", 
+                description: "Componentes eletrônicos urgentes", 
+                createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString() // 45 minutos atrás
+            },
+            { 
+                id: 6, 
+                title: "Item #006", 
+                location: "Setor D", 
+                status: "done", 
+                completed: "2023-06-08", 
+                description: "Material de embalagem", 
+                createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString() // 20 minutos atrás
+            },
+            { 
+                id: 7, 
+                title: "Item #007", 
+                location: "Setor A", 
+                status: "progress", 
+                description: "Material necessário para linha de produção", 
+                responsible: "João Silva", 
+                createdAt: new Date(Date.now() - 70 * 60 * 1000).toISOString() // 1h10 atrás
+            },
+            { 
+                id: 8, 
+                title: "Item #008", 
+                location: "Setor B", 
+                status: "todo", 
+                description: "Peças para manutenção", 
+                createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutos atrás
+            },
+            { 
+                id: 9, 
+                title: "Item #009", 
+                location: "Setor A", 
+                status: "done", 
+                completed: "2023-06-09", 
+                description: "Material de limpeza", 
+                createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 minutos atrás
+            }
+        ];
+        
+        let schedules = [
+            { id: 1, title: "Reunião de Equipe", date: "2023-06-12", description: "Reunião semanal com a equipe de operações" },
+            { id: 2, title: "Entrega de Material", date: "2023-06-15", description: "Entrega de material para o Setor C" },
+            { id: 3, title: "Manutenção Preventiva", date: "2023-06-20", description: "Manutenção programada dos equipamentos" }
+        ];
+        
+        let alerts = [
+            { id: 1, title: "Item #007 está atrasado", priority: "alta", description: "Local: Setor A", createdAt: "2023-06-10 14:20" },
+            { id: 2, title: "Item #005 é prioritário", priority: "urgente", description: "Local: Setor C", createdAt: "2023-06-09 09:15" }
+        ];
+        
+        // Elementos DOM
+        const loginModal = document.getElementById('loginModal');
+        const logisticsViewBtn = document.getElementById('logisticsViewBtn');
+        const leaderViewBtn = document.getElementById('leaderViewBtn');
+        const logoutButton = document.getElementById('logoutButton');
+        const operatorView = document.querySelector('.operator-view');
+        const logisticsView = document.querySelector('.logistics-view');
+        const leaderView = document.getElementById('leaderView');
+        const itemModal = document.getElementById('itemModal');
+        const addItemModal = document.getElementById('addItemModal');
+        const responsibleModal = document.getElementById('responsibleModal');
+        const addScheduleModal = document.getElementById('addScheduleModal');
+        const addAlertModal = document.getElementById('addAlertModal');
+        const closeModalButtons = document.querySelectorAll('.close-modal');
+        const loginButton = document.getElementById('loginButton');
+        const saveNewItemButton = document.getElementById('saveNewItem');
+        const confirmMoveButton = document.getElementById('confirmMove');
+        const markAsResolvedButton = document.getElementById('markAsResolved');
+        const deleteItemBtn = document.getElementById('deleteItemBtn');
+        const addScheduleBtn = document.getElementById('addScheduleBtn');
+        const saveScheduleButton = document.getElementById('saveSchedule');
+        const addAlertBtn = document.getElementById('addAlertBtn');
+        const saveAlertButton = document.getElementById('saveAlert');
+        const addTodoItemBtn = document.getElementById('addTodoItem');
+        const addProgressItemBtn = document.getElementById('addProgressItem');
+        const addDoneItemBtn = document.getElementById('addDoneItem');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const currentMonthSpan = document.getElementById('currentMonth');
+        const logisticsPrevMonthBtn = document.getElementById('logistics-prevMonth');
+        const logisticsNextMonthBtn = document.getElementById('logistics-nextMonth');
+        const logisticsCurrentMonthSpan = document.getElementById('logistics-currentMonth');
+        
+        // Variáveis para controle de arrastar e soltar
+        let draggedItem = null;
+        let targetColumn = null;
+        let currentItemId = null;
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar modal de login para líderes
+            loginModal.style.display = 'flex';
+            
+            // Inicializar calendários
+            renderCalendar('leader-calendar', currentDate);
+            renderCalendar('logistics-calendar', logisticsCurrentDate);
+            
+            // Carregar itens Kanban
+            renderKanbanItems();
+            
+            // Carregar alertas
+            renderAlerts();
+            
+            // Atualizar estatísticas
+            updateStatistics();
+            
+            // Adicionar eventos de arrastar e soltar
+            initDragAndDrop();
+            
+            // Atualizar contadores de itens
+            updateItemCounts();
+        });
+        
+        // Função para calcular o status baseado no tempo
+        function calculateStatus(createdAt, status) {
+            // Se o item está na coluna "Concluído", retornar "completed"
+            if (status === 'done') {
+                return 'completed';
+            }
+            
+            const createdTime = new Date(createdAt).getTime();
+            const currentTime = new Date().getTime();
+            const elapsedMinutes = (currentTime - createdTime) / (1000 * 60);
+            
+            if (elapsedMinutes > 60) { // Mais de 1 hora
+                return 'delayed';
+            } else if (elapsedMinutes > 40) { // Mais de 40 minutos
+                return 'urgent';
+            } else { // Menos de 40 minutos
+                return 'normal';
+            }
+        }
+        
+        // Função para formatar o tempo decorrido
+        function formatElapsedTime(createdAt) {
+            const createdTime = new Date(createdAt).getTime();
+            const currentTime = new Date().getTime();
+            const elapsedMinutes = Math.floor((currentTime - createdTime) / (1000 * 60));
+            
+            if (elapsedMinutes < 60) {
+                return `${elapsedMinutes} minutos`;
+            } else {
+                const hours = Math.floor(elapsedMinutes / 60);
+                const minutes = elapsedMinutes % 60;
+                return `${hours} hora${hours > 1 ? 's' : ''} e ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+            }
+        }
+        
+        // Função para renderizar calendário
+        function renderCalendar(calendarId, date) {
+            const calendar = document.getElementById(calendarId);
+            calendar.innerHTML = '';
+            
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const today = new Date();
+            
+            // Atualizar o cabeçalho do mês atual
+            if (calendarId === 'leader-calendar') {
+                currentMonthSpan.textContent = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+            } else if (calendarId === 'logistics-calendar') {
+                logisticsCurrentMonthSpan.textContent = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+            }
+            
+            // Dias da semana
+            const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            daysOfWeek.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = day;
+                calendar.appendChild(dayElement);
+            });
+            
+            // Dias do mês
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            
+            // Dias vazios no início
+            for (let i = 0; i < firstDay.getDay(); i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-date';
+                calendar.appendChild(emptyDay);
+            }
+            
+            // Dias do mês
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-date';
+                dayElement.textContent = i;
+                
+                // Verificar se é hoje
+                if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear() && i === today.getDate()) {
+                    dayElement.classList.add('today');
+                }
+                
+                // Verificar se tem agendamentos
+                const scheduleDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
+                const hasSchedule = schedules.some(schedule => schedule.date === scheduleDate);
+                
+                if (hasSchedule) {
+                    dayElement.classList.add('has-items');
+                    dayElement.addEventListener('click', function() {
+                        showSchedulesForDate(scheduleDate);
+                    });
+                } else if (calendarId === 'leader-calendar') {
+                    // Se for o calendário do líder, permitir adicionar agendamento
+                    dayElement.addEventListener('click', function() {
+                        document.getElementById('scheduleDate').value = scheduleDate;
+                        addScheduleModal.style.display = 'flex';
+                    });
+                }
+                
+                calendar.appendChild(dayElement);
+            }
+        }
+        
+        // Função para mostrar agendamentos de uma data
+        function showSchedulesForDate(date) {
+            const schedulesForDate = schedules.filter(schedule => schedule.date === date);
+            let message = `Agendamentos para ${formatDate(date)}:\n\n`;
+            
+            if (schedulesForDate.length > 0) {
+                schedulesForDate.forEach(schedule => {
+                    message += `• ${schedule.title}\n  ${schedule.description}\n\n`;
+                });
+            } else {
+                message += "Nenhum agendamento para esta data.";
+            }
+            
+            alert(message);
+        }
+        
+        // Função para renderizar itens Kanban
+        function renderKanbanItems() {
+            // Limpar colunas
+            document.querySelectorAll('.kanban-items').forEach(column => {
+                column.innerHTML = '';
+            });
+            
+            // Adicionar itens às colunas correspondentes
+            kanbanItems.forEach(item => {
+                const itemElement = createKanbanItemElement(item);
+                
+                // Adicionar à coluna correta
+                let targetColumnId;
+                if (item.status === 'todo') {
+                    targetColumnId = 'todo-items';
+                } else if (item.status === 'progress') {
+                    targetColumnId = 'progress-items';
+                } else if (item.status === 'done') {
+                    targetColumnId = 'done-items';
+                }
+                
+                document.getElementById(targetColumnId).appendChild(itemElement);
+            });
+        }
+        
+        // Função para criar elemento de item Kanban
+        function createKanbanItemElement(item) {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'kanban-item';
+            
+            // Calcular status baseado no tempo e na coluna
+            const status = calculateStatus(item.createdAt, item.status);
+            itemElement.classList.add(status);
+            
+            itemElement.setAttribute('draggable', 'true');
+            itemElement.setAttribute('data-id', item.id);
+            
+            // Determinar texto do status
+            let statusText = '';
+            let statusClass = '';
+            if (status === 'delayed') {
+                statusText = 'Atrasado';
+                statusClass = 'status-delayed';
+            } else if (status === 'urgent') {
+                statusText = 'Urgente';
+                statusClass = 'status-urgent';
+            } else if (status === 'completed') {
+                statusText = 'Concluído';
+                statusClass = 'status-completed';
+            } else {
+                statusText = 'Normal';
+                statusClass = 'status-normal';
+            }
+            
+            itemElement.innerHTML = `
+                <div class="item-actions">
+                    <button class="delete-btn" title="Excluir item"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="item-title">${item.title}</div>
+                <div class="item-details">
+                    <span>Local: ${item.location}</span>
+                    ${item.responsible ? `<span>Responsável: ${item.responsible}</span>` : ''}
+                    <div class="item-time">Criado: ${formatDateTime(item.createdAt)}</div>
+                    <div class="item-status ${statusClass}">${statusText} • ${formatElapsedTime(item.createdAt)}</div>
+                </div>
+            `;
+            
+            // Adicionar eventos de arrastar e clique
+            itemElement.addEventListener('dragstart', function() {
+                draggedItem = this;
+                setTimeout(() => this.classList.add('dragging'), 0);
+            });
+            
+            itemElement.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                draggedItem = null;
+                document.querySelectorAll('.kanban-items').forEach(col => col.classList.remove('active'));
+            });
+            
+            itemElement.addEventListener('click', function(e) {
+                // Não abrir modal se clicar nos botões de ação
+                if (!e.target.closest('.item-actions')) {
+                    showItemDetails(item.id);
+                }
+            });
+            
+            // Adicionar evento para o botão de excluir
+            const deleteBtn = itemElement.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); // Impedir que o clique no botão dispare o evento do item
+                deleteKanbanItem(item.id);
+            });
+            
+            return itemElement;
+        }
+        
+        // Função para excluir um item Kanban
+        function deleteKanbanItem(itemId) {
+            if (confirm('Tem certeza que deseja excluir este item?')) {
+                // Remover do array de dados
+                kanbanItems = kanbanItems.filter(item => item.id !== itemId);
+                
+                // Atualizar visualização
+                renderKanbanItems();
+                updateItemCounts();
+                updateStatistics();
+                
+                // Fechar modal se estiver aberto
+                itemModal.style.display = 'none';
+                
+                alert('Item excluído com sucesso!');
+            }
+        }
+        
+        // Função para inicializar arrastar e soltar
+        function initDragAndDrop() {
+            const columns = document.querySelectorAll('.kanban-items');
+            
+            // Eventos para as colunas
+            columns.forEach(column => {
+                column.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('active');
+                });
+                
+                column.addEventListener('dragleave', function() {
+                    this.classList.remove('active');
+                });
+                
+                column.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('active');
+                    
+                    if (draggedItem) {
+                        const itemId = parseInt(draggedItem.getAttribute('data-id'));
+                        const sourceColumn = draggedItem.parentNode.id;
+                        
+                        // Se movendo da coluna "A Fazer" para "Em Andamento", pedir nome do responsável
+                        if (sourceColumn === 'todo-items' && this.id === 'progress-items') {
+                            targetColumn = this;
+                            currentItemId = itemId;
+                            responsibleModal.style.display = 'flex';
+                        } else {
+                            // Para outros movimentos, atualizar diretamente
+                            this.appendChild(draggedItem);
+                            updateItemStatus(draggedItem, this.id);
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Função para mostrar detalhes do item
+        function showItemDetails(itemId) {
+            const item = kanbanItems.find(i => i.id === itemId);
+            if (!item) return;
+            
+            // Calcular status atualizado
+            const status = calculateStatus(item.createdAt, item.status);
+            let statusText = '';
+            let statusColor = '';
+            
+            if (status === 'delayed') {
+                statusText = 'Atrasado';
+                statusColor = 'var(--danger)';
+            } else if (status === 'urgent') {
+                statusText = 'Urgente';
+                statusColor = 'var(--warning)';
+            } else if (status === 'completed') {
+                statusText = 'Concluído';
+                statusColor = 'var(--primary)';
+            } else {
+                statusText = 'Normal';
+                statusColor = 'var(--success)';
+            }
+            
+            document.getElementById('modalItemTitle').textContent = item.title;
+            document.getElementById('modalItemStatus').textContent = statusText;
+            document.getElementById('modalItemStatus').style.color = statusColor;
+            document.getElementById('modalItemLocation').textContent = item.location;
+            document.getElementById('modalItemResponsible').textContent = item.responsible || 'Não definido';
+            document.getElementById('modalItemDescription').textContent = item.description;
+            document.getElementById('modalItemCreatedAt').textContent = formatDateTime(item.createdAt);
+            document.getElementById('modalItemElapsedTime').textContent = formatElapsedTime(item.createdAt);
+            
+            currentItemId = itemId;
+            itemModal.style.display = 'flex';
+        }
+        
+        // Função para atualizar o status do item
+        function updateItemStatus(item, columnId) {
+            const itemId = parseInt(item.getAttribute('data-id'));
+            let newStatus = '';
+            
+            if (columnId.includes('todo')) {
+                newStatus = 'todo';
+            } else if (columnId.includes('progress')) {
+                newStatus = 'progress';
+            } else if (columnId.includes('done')) {
+                newStatus = 'done';
+            }
+            
+            // Atualizar no array de dados
+            const itemIndex = kanbanItems.findIndex(i => i.id === itemId);
+            if (itemIndex !== -1) {
+                kanbanItems[itemIndex].status = newStatus;
+                if (newStatus === 'done') {
+                    kanbanItems[itemIndex].completed = new Date().toISOString().split('T')[0];
+                }
+                
+                // Atualizar visualização
+                renderKanbanItems();
+                updateItemCounts();
+                updateStatistics();
+            }
+        }
+        
+        // Função para atualizar contadores de itens
+        function updateItemCounts() {
+            const todoCount = document.querySelectorAll('#todo-items .kanban-item').length;
+            const progressCount = document.querySelectorAll('#progress-items .kanban-item').length;
+            const doneCount = document.querySelectorAll('#done-items .kanban-item').length;
+            
+            document.querySelectorAll('.item-count')[0].textContent = todoCount;
+            document.querySelectorAll('.item-count')[1].textContent = progressCount;
+            document.querySelectorAll('.item-count')[2].textContent = doneCount;
+        }
+        
+        // Função para atualizar estatísticas
+        function updateStatistics() {
+            // Calcular estatísticas
+            const totalItems = kanbanItems.length;
+            const completedItems = kanbanItems.filter(item => item.status === 'done').length;
+            const delayedItems = kanbanItems.filter(item => 
+                item.status !== 'done' && calculateStatus(item.createdAt, item.status) === 'delayed'
+            ).length;
+            const urgentItems = kanbanItems.filter(item => 
+                item.status !== 'done' && calculateStatus(item.createdAt, item.status) === 'urgent'
+            ).length;
+            
+            // Atualizar estatísticas na visualização do operador
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('completedItems').textContent = completedItems;
+            document.getElementById('delayedItems').textContent = delayedItems;
+            document.getElementById('urgentItems').textContent = urgentItems;
+            
+            // Atualizar estatísticas na visualização de logística
+            document.getElementById('logisticsTotalItems').textContent = totalItems;
+            document.getElementById('logisticsCompletedItems').textContent = completedItems;
+            document.getElementById('logisticsDelayedItems').textContent = delayedItems;
+            document.getElementById('logisticsUrgentItems').textContent = urgentItems;
+        }
+        
+        // Função para renderizar alertas
+        function renderAlerts() {
+            const alertsList = document.getElementById('alerts-list');
+            
+            if (alertsList) {
+                alertsList.innerHTML = '';
+                alerts.forEach(alert => {
+                    const alertElement = document.createElement('div');
+                    alertElement.className = 'alert-item';
+                    
+                    // Definir cor da borda baseada na prioridade
+                    let borderColor = 'var(--primary)'; // padrão
+                    if (alert.priority === 'alta') borderColor = 'var(--warning)';
+                    if (alert.priority === 'urgente') borderColor = 'var(--danger)';
+                    
+                    alertElement.style.borderLeftColor = borderColor;
+                    alertElement.innerHTML = `
+                        <div class="alert-title">${alert.title} <span style="font-size: 12px; color: ${borderColor};">(${alert.priority.toUpperCase()})</span></div>
+                        <div class="alert-details">${alert.description}</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 5px;">Criado: ${alert.createdAt}</div>
+                    `;
+                    alertsList.appendChild(alertElement);
+                });
+            }
+        }
+        
+        // Alternar entre visões
+        logisticsViewBtn.addEventListener('click', function() {
+            setActiveView('logistics');
+        });
+        
+        leaderViewBtn.addEventListener('click', function() {
+            if (currentUser) {
+                setActiveView('leader');
+            } else {
+                loginModal.style.display = 'flex';
+            }
+        });
+        
+        // Função para definir a visualização ativa
+        function setActiveView(view) {
+            // Remover classe active de todos os botões e views
+            logisticsViewBtn.classList.remove('active');
+            leaderViewBtn.classList.remove('active');
+            operatorView.classList.remove('active');
+            logisticsView.classList.remove('active');
+            leaderView.style.display = 'none';
+            
+            // Adicionar classe active ao botão e view selecionados
+            switch(view) {
+                case 'operator':
+                    operatorView.classList.add('active');
+                    break;
+                case 'logistics':
+                    logisticsViewBtn.classList.add('active');
+                    logisticsView.classList.add('active');
+                    break;
+                case 'leader':
+                    leaderViewBtn.classList.add('active');
+                    leaderView.style.display = 'block';
+                    break;
+            }
+        }
+        
+        // Login
+        loginButton.addEventListener('click', function() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Verificação simples (em um sistema real, isso seria feito no servidor)
+            if (username === 'admin' && password === 'admin123') {
+                currentUser = { username: username, role: 'leader' };
+                loginModal.style.display = 'none';
+                logoutButton.style.display = 'flex';
+                setActiveView('leader');
+            } else {
+                alert('Usuário ou senha incorretos!');
+            }
+        });
+        
+        // Logout
+        logoutButton.addEventListener('click', function() {
+            currentUser = null;
+            logoutButton.style.display = 'none';
+            setActiveView('operator');
+        });
+        
+        // Fechar modais ao clicar fora
+        window.addEventListener('click', function(event) {
+            if (event.target === loginModal) {
+                loginModal.style.display = 'none';
+            }
+            if (event.target === itemModal) {
+                itemModal.style.display = 'none';
+            }
+            if (event.target === addItemModal) {
+                addItemModal.style.display = 'none';
+            }
+            if (event.target === responsibleModal) {
+                responsibleModal.style.display = 'none';
+            }
+            if (event.target === addScheduleModal) {
+                addScheduleModal.style.display = 'none';
+            }
+            if (event.target === addAlertModal) {
+                addAlertModal.style.display = 'none';
+            }
+        });
+        
+        // Fechar modais com botão X
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                itemModal.style.display = 'none';
+                addItemModal.style.display = 'none';
+                responsibleModal.style.display = 'none';
+                addScheduleModal.style.display = 'none';
+                addAlertModal.style.display = 'none';
+            });
+        });
+        
+        // Navegação do calendário
+        prevMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar('leader-calendar', currentDate);
+        });
+        
+        nextMonthBtn.addEventListener('click', function() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar('leader-calendar', currentDate);
+        });
+        
+        // Navegação do calendário da logística
+        logisticsPrevMonthBtn.addEventListener('click', function() {
+            logisticsCurrentDate.setMonth(logisticsCurrentDate.getMonth() - 1);
+            renderCalendar('logistics-calendar', logisticsCurrentDate);
+        });
+        
+        logisticsNextMonthBtn.addEventListener('click', function() {
+            logisticsCurrentDate.setMonth(logisticsCurrentDate.getMonth() + 1);
+            renderCalendar('logistics-calendar', logisticsCurrentDate);
+        });
+        
+        // Confirmar movimento para "Em Andamento"
+        confirmMoveButton.addEventListener('click', function() {
+            const responsibleName = document.getElementById('responsibleName').value;
+            
+            if (responsibleName.trim() === '') {
+                alert('Por favor, informe o nome do responsável.');
+                return;
+            }
+            
+            if (currentItemId) {
+                // Atualizar o responsável e status no array de dados
+                const itemIndex = kanbanItems.findIndex(i => i.id === currentItemId);
+                if (itemIndex !== -1) {
+                    kanbanItems[itemIndex].responsible = responsibleName;
+                    kanbanItems[itemIndex].status = 'progress';
+                    
+                    // Atualizar visualização completa para refletir as mudanças
+                    renderKanbanItems();
+                    updateItemCounts();
+                    updateStatistics();
+                    
+                    // Fechar modal e limpar
+                    responsibleModal.style.display = 'none';
+                    document.getElementById('responsibleName').value = '';
+                    
+                    // Resetar variáveis
+                    currentItemId = null;
+                    draggedItem = null;
+                    targetColumn = null;
+                    
+                    alert('Item movido para "Em Andamento" com sucesso!');
+                } else {
+                    alert('Erro: Item não encontrado.');
+                }
+            } else {
+                alert('Erro: Não foi possível completar a operação. Tente novamente.');
+            }
+        });
+        
+        // Marcar item como resolvido
+        markAsResolvedButton.addEventListener('click', function() {
+            if (currentItemId) {
+                const itemIndex = kanbanItems.findIndex(i => i.id === currentItemId);
+                if (itemIndex !== -1) {
+                    kanbanItems[itemIndex].status = 'done';
+                    kanbanItems[itemIndex].completed = new Date().toISOString().split('T')[0];
+                    
+                    // Atualizar visualização
+                    renderKanbanItems();
+                    updateItemCounts();
+                    updateStatistics();
+                    
+                    itemModal.style.display = 'none';
+                    alert('Item marcado como resolvido!');
+                }
+            }
+        });
+        
+        // Excluir item do modal
+        deleteItemBtn.addEventListener('click', function() {
+            if (currentItemId) {
+                deleteKanbanItem(currentItemId);
+            }
+        });
+        
+        // Adicionar novo item
+        [addTodoItemBtn, addProgressItemBtn, addDoneItemBtn].forEach(button => {
+            button.addEventListener('click', function() {
+                addItemModal.style.display = 'flex';
+                
+                // Definir a coluna de destino baseada no botão clicado
+                window.targetColumnForNewItem = this.id.replace('add', '').replace('Item', '').toLowerCase();
+            });
+        });
+        
+        // Salvar novo item
+        saveNewItemButton.addEventListener('click', function() {
+            const title = document.getElementById('itemTitle').value;
+            const location = document.getElementById('itemLocation').value;
+            const description = document.getElementById('itemDescription').value;
+            
+            if (title.trim() === '') {
+                alert('Por favor, preencha pelo menos o título do item.');
+                return;
+            }
+            
+            // Criar novo item
+            const newId = kanbanItems.length > 0 ? Math.max(...kanbanItems.map(i => i.id)) + 1 : 1;
+            const now = new Date();
+            const createdAt = now.toISOString();
+            
+            const newItem = {
+                id: newId,
+                title: title,
+                location: location,
+                description: description,
+                status: window.targetColumnForNewItem,
+                createdAt: createdAt
+            };
+            
+            kanbanItems.push(newItem);
+            
+            // Atualizar visualização
+            renderKanbanItems();
+            updateItemCounts();
+            updateStatistics();
+            
+            // Fechar modal e limpar formulário
+            addItemModal.style.display = 'none';
+            document.getElementById('itemTitle').value = '';
+            document.getElementById('itemDescription').value = '';
+            
+            alert('Item adicionado com sucesso!');
+        });
+        
+        // Adicionar agendamento
+        addScheduleBtn.addEventListener('click', function() {
+            addScheduleModal.style.display = 'flex';
+            // Definir data atual como padrão
+            document.getElementById('scheduleDate').value = new Date().toISOString().split('T')[0];
+        });
+        
+        // Salvar agendamento
+        saveScheduleButton.addEventListener('click', function() {
+            const title = document.getElementById('scheduleTitle').value;
+            const date = document.getElementById('scheduleDate').value;
+            const description = document.getElementById('scheduleDescription').value;
+            
+            if (title.trim() === '' || date === '') {
+                alert('Por favor, preencha pelo menos o título e a data.');
+                return;
+            }
+            
+            // Criar novo agendamento
+            const newId = schedules.length > 0 ? Math.max(...schedules.map(s => s.id)) + 1 : 1;
+            const newSchedule = {
+                id: newId,
+                title: title,
+                date: date,
+                description: description
+            };
+            
+            schedules.push(newSchedule);
+            
+            // Atualizar calendários
+            renderCalendar('leader-calendar', currentDate);
+            renderCalendar('logistics-calendar', logisticsCurrentDate);
+            
+            // Fechar modal e limpar formulário
+            addScheduleModal.style.display = 'none';
+            document.getElementById('scheduleTitle').value = '';
+            document.getElementById('scheduleDate').value = '';
+            document.getElementById('scheduleDescription').value = '';
+            
+            alert('Agendamento adicionado com sucesso!');
+        });
+        
+        // Adicionar alerta
+        addAlertBtn.addEventListener('click', function() {
+            addAlertModal.style.display = 'flex';
+        });
+        
+        // Salvar alerta
+        saveAlertButton.addEventListener('click', function() {
+            const title = document.getElementById('alertTitle').value;
+            const priority = document.getElementById('alertPriority').value;
+            const description = document.getElementById('alertDescription').value;
+            
+            if (title.trim() === '') {
+                alert('Por favor, preencha pelo menos o título do alerta.');
+                return;
+            }
+            
+            // Criar novo alerta
+            const newId = alerts.length > 0 ? Math.max(...alerts.map(a => a.id)) + 1 : 1;
+            const now = new Date();
+            const createdAt = `${formatDate(now.toISOString().split('T')[0])} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            const newAlert = {
+                id: newId,
+                title: title,
+                priority: priority,
+                description: description,
+                createdAt: createdAt
+            };
+            
+            alerts.push(newAlert);
+            
+            // Atualizar lista de alertas
+            renderAlerts();
+            
+            // Fechar modal e limpar formulário
+            addAlertModal.style.display = 'none';
+            document.getElementById('alertTitle').value = '';
+            document.getElementById('alertDescription').value = '';
+            
+            alert('Alerta adicionado com sucesso!');
+        });
+        
+        // Função auxiliar para formatar data
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+        }
+        
+        // Função para formatar data e hora
+        function formatDateTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // Simular dados de sensores (atualização automática)
+        function updateSensorData() {
+            const sensors = document.querySelectorAll('.status-light');
+            sensors.forEach(sensor => {
+                // Simular mudança aleatória de status
+                if (Math.random() > 0.7) {
+                    sensor.classList.toggle('status-green');
+                    sensor.classList.toggle('status-red');
+                    
+                    const text = sensor.nextElementSibling;
+                    if (sensor.classList.contains('status-green')) {
+                        text.textContent = text.textContent.replace('Inativo', 'Ativo').replace('Atenção', 'Normal');
+                    } else {
+                        text.textContent = text.textContent.replace('Ativo', 'Inativo').replace('Normal', 'Atenção');
+                    }
+                }
+            });
+        }
+        
+        // Atualizar dados a cada 10 segundos
+        setInterval(updateSensorData, 10000);
+        
+        // Atualizar status dos itens a cada minuto
+        setInterval(function() {
+            renderKanbanItems();
+            updateStatistics();
+        }, 60000);
+    </script>
+</body>
+</html>
